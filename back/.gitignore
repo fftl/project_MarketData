@@ -49,7 +49,7 @@ env/
 *.sqlite3
 
 # CSV 데이터 (용량 크면)
-# data/*.csv
+data/*.csv
 
 # Log files
 *.log
