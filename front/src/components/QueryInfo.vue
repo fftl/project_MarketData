@@ -1,18 +1,27 @@
+<!-- QueryInfo.vue -->
 <template>
   <div class="query-info">
     <h3>쿼리 정보</h3>
     <div class="info-content">
       <div class="info-item">
-        <span class="label">조회 시간:</span>
-        <span class="value">{{ queryTime ? queryTime + 'ms' : 'N/A' }}</span>
+        <span class="label">실행 시간:</span>
+        <span class="value highlight">{{ queryTime ? queryTime + 'ms' : 'N/A' }}</span>
       </div>
       <div class="info-item">
         <span class="label">Row Type:</span>
         <span class="value">{{ rowType || 'N/A' }}</span>
       </div>
       <div class="info-item">
-        <span class="label">Row Count:</span>
-        <span class="value">{{ rowCount || 0 }}</span>
+        <span class="label">예상 행 수:</span>
+        <span class="value">{{ estimatedRows || 'N/A' }}</span>
+      </div>
+      <div class="info-item">
+        <span class="label">실제 조회 수:</span>
+        <span class="value">{{ rowCount || 0 }}개</span>
+      </div>
+      <div class="info-item" v-if="usedKey">
+        <span class="label">사용된 인덱스:</span>
+        <span class="value">{{ usedKey }}</span>
       </div>
     </div>
   </div>
@@ -22,50 +31,11 @@
 export default {
   name: 'QueryInfo',
   props: {
-    queryTime: {
-      type: Number,
-      default: null
-    },
-    rowType: {
-      type: String,
-      default: null
-    },
-    rowCount: {
-      type: Number,
-      default: 0
-    }
+    queryTime: Number,
+    rowType: String,
+    rowCount: Number,
+    estimatedRows: Number,  // 추가
+    usedKey: String  // 추가
   }
 }
 </script>
-
-<style scoped>
-.query-info {
-  flex: 1;
-  border: 2px solid black;
-  padding: 20px;
-  min-width: 250px;
-}
-
-.info-content {
-  margin-top: 15px;
-}
-
-.info-item {
-  margin: 10px 0;
-  padding: 10px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-}
-
-.label {
-  font-weight: bold;
-  color: #333;
-  display: inline-block;
-  width: 120px;
-}
-
-.value {
-  color: #0066cc;
-  font-size: 16px;
-}
-</style>

@@ -1,3 +1,4 @@
+import time  # 시간 측정용
 from fastapi import APIRouter, HTTPException
 from models.schemas import (
     TableCreateRequest, 
@@ -42,14 +43,53 @@ async def create_full_table(request: FullTableCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # 전체 데이터 조회
-@router.get("/table/{table_name}/data")
-async def get_table_data(table_name: str, limit: int = 100):
+@router.post("/query/execute")
+async def get_table_data(request: QueryRequest):
     try:
-        data = db_service.select_data(table_name, limit=limit)
+        data = db_service.select_data(request.table_name, limit=request.limit)
         return {
             "success": True,
             "data": data,
             "count": len(data)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/query/explain")
+async def explain_query(request: QueryRequest):
+    try:
+        start_time = time.time()
+        
+        # EXPLAIN + EXPLAIN ANALYZE 실행
+        explain_result = db_service.explain_data(
+            request.table_name,
+            conditions=request.conditions,
+            limit=request.limit
+        )
+        
+        # 실제 데이터
+        data = db_service.select_data(
+            request.table_name,
+            conditions=request.conditions,
+            limit=request.limit
+        )
+        
+        end_time = time.time()
+        query_time = (end_time - start_time) * 1000
+        
+        return {
+            "success": True,
+            "data": data,
+            "count": len(data),
+            "query_time": round(query_time, 2),
+            "explain_data": {
+                "type": explain_result['type'],
+                "rows": explain_result['rows'],
+                "key": explain_result['key'],
+                "key_len": explain_result['key_len'],
+                "extra": explain_result['Extra'],
+                "analyze_text": explain_result['analyze_text']
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

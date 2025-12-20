@@ -16,3 +16,4 @@ class IndexRequest(BaseModel):
 class QueryRequest(BaseModel):
     table_name: str
     conditions: Optional[Dict] = None
+    limit: int = 100

@@ -67,3 +67,40 @@ class DatabaseService:
                 cursor.execute(sql)
             
             return cursor.fetchall()
+        
+    def explain_data(self, table_name: str, conditions: Optional[Dict] = None, limit: int = 100):
+        """EXPLAIN과 EXPLAIN ANALYZE 모두 실행"""
+        with self.connection.cursor() as cursor:
+            sql = f"SELECT * FROM {table_name}"
+            
+            if conditions:
+                where_clauses = [f"{k} = %s" for k in conditions.keys()]
+                sql += " WHERE " + " AND ".join(where_clauses)
+            
+            sql += f" LIMIT {limit}"
+            
+            params = tuple(conditions.values()) if conditions else None
+            
+            # 1. EXPLAIN 실행 (테이블 형식)
+            explain_sql = "EXPLAIN " + sql
+            cursor.execute(explain_sql, params) if params else cursor.execute(explain_sql)
+            explain_result = cursor.fetchall()
+            
+            # 2. EXPLAIN ANALYZE 실행 (실제 실행)
+            analyze_sql = "EXPLAIN ANALYZE " + sql
+            cursor.execute(analyze_sql, params) if params else cursor.execute(analyze_sql)
+            analyze_result = cursor.fetchall()
+            
+            # 결과 정리
+            explain_info = explain_result[0] if explain_result else {}
+            analyze_text = analyze_result[0].get('EXPLAIN', '') if analyze_result else ''
+            
+            return {
+                'type': explain_info.get('type', 'N/A'),
+                'rows': explain_info.get('rows', 0),
+                'key': explain_info.get('key', None),
+                'key_len': explain_info.get('key_len', None),
+                'Extra': explain_info.get('Extra', ''),
+                'analyze_text': analyze_text,
+                'full_explain': explain_info
+            }
