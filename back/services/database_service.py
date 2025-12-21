@@ -164,27 +164,20 @@ class DatabaseService:
         return {"index_dropped": index_name}
     
     def execute_raw_query(self, query: str):
-        """직접 작성한 쿼리 실행 (읽기 전용 연결 사용)"""
-        # 검증은 여전히 수행
         cleaned_query = self._clean_query(query)
         if not self._is_safe_select(cleaned_query):
             raise ValueError("SELECT 쿼리만 실행 가능합니다.")
         
-        """직접 작성한 쿼리 실행"""
         with self.readonly_connection.cursor() as cursor:
             cursor.execute(query)
             return cursor.fetchall()
 
     def execute_explain_raw(self, query: str):
-        """직접 작성한 쿼리 실행 (읽기 전용 연결 사용)"""
-        # 검증은 여전히 수행
         cleaned_query = self._clean_query(query)
         if not self._is_safe_select(cleaned_query):
             raise ValueError("SELECT 쿼리만 실행 가능합니다.")
         
-        """직접 작성한 쿼리의 EXPLAIN 실행"""
         with self.readonly_connection.cursor() as cursor:
-            # EXPLAIN 실행
             explain_query = f"EXPLAIN {query}"
             cursor.execute(explain_query)
             explain_result = cursor.fetchall()

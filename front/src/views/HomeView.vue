@@ -26,18 +26,18 @@
 
           <div class="action-buttons">
             <button
-              @click="createTableWithSelectedColumns"
-              :disabled="isLoading || selectedColumns.length === 0"
-              class="btn-primary"
-            >
-              선택한 컬럼으로 테이블 생성 ({{ selectedColumns.length }}개)
-            </button>
-            <button
               @click="createFullTable"
               :disabled="isLoading"
-              class="btn-secondary"
+              class="btn-primary"
             >
               전체 컬럼으로 테이블 생성 ({{ availableColumns.length }}개)
+            </button>
+            <button
+              @click="createTableWithSelectedColumns"
+              :disabled="isLoading || selectedColumns.length === 0"
+              class="btn-secondary"
+            >
+              선택한 컬럼으로 테이블 생성 ({{ selectedColumns.length }}개)
             </button>
           </div>
         </div>
