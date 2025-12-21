@@ -134,7 +134,7 @@ class DatabaseService:
         
         # 3. 새로 생성
         df = pd.read_csv(csv_path)
-        df = df.sample(frac=0.01)
+        df = df.sample(frac=0.5)
         
         # 컬럼 유효성 검증
         available_columns = df.columns.tolist()
