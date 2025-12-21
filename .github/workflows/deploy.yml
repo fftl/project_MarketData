@@ -22,5 +22,7 @@ jobs:
           cd /home/ubuntu/market_data
           git pull origin main
           docker-compose down
-          docker-compose up -d --build
+          docker builder prune -f  # 빌더 캐시 정리
+          docker-compose build --no-cache  # 캐시 없이 빌드
+          docker-compose up -d
           docker image prune -f
