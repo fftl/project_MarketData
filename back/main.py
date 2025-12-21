@@ -9,6 +9,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://3.39.42.231:8080"],  # Vue 허용
     allow_methods=["*"],
+    allow_credentials=True,  # ← 추가
+    allow_headers=["*"],     # ← 추가
 )
 
 # 라우터 등록 (메뉴판 가져다 붙이기)
