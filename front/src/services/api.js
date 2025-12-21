@@ -1,3 +1,4 @@
+// services/api.js
 import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:8000/api'
@@ -23,11 +24,12 @@ export default {
     })
   },
 
-  // 기존 함수들...
+  // 테이블 생성
   createTable(columns) {
     return axios.post(`${API_BASE_URL}/table/create`, { columns })
   },
 
+  // 단일 인덱스 생성
   createIndex(tableName, columnName, indexName = null) {
     return axios.post(`${API_BASE_URL}/index/create`, {
       table_name: tableName,
@@ -36,12 +38,23 @@ export default {
     })
   },
 
+  // 복합 인덱스 생성 (추가)
+  createCompositeIndex(tableName, columns, indexName = null) {
+    return axios.post(`${API_BASE_URL}/index/create-composite`, {
+      table_name: tableName,
+      columns: columns,  // 배열 형태
+      index_name: indexName
+    })
+  },
+
+  // 인덱스 삭제
   dropIndex(tableName, indexName) {
     return axios.delete(`${API_BASE_URL}/index/drop`, {
       params: { table_name: tableName, index_name: indexName }
     })
   },
 
+  // 쿼리 실행
   executeQuery(tableName, conditions = null) {
     return axios.post(`${API_BASE_URL}/query/execute`, {
       table_name: tableName,
@@ -49,10 +62,25 @@ export default {
     })
   },
 
+  // EXPLAIN 실행
   explainQuery(tableName, conditions = null) {
     return axios.post(`${API_BASE_URL}/query/explain`, {
       table_name: tableName,
       conditions
+    })
+  },
+
+    // 커스텀 쿼리 실행
+  executeCustomQuery(query) {
+    return axios.post(`${API_BASE_URL}/query/execute-custom`, {
+      query: query
+    })
+  },
+
+  // 커스텀 EXPLAIN 실행
+  explainCustomQuery(query) {
+    return axios.post(`${API_BASE_URL}/query/explain-custom`, {
+      query: query
     })
   }
 }

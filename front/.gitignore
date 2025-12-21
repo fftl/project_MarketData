@@ -41,3 +41,6 @@ dist-ssr/
 
 # Build
 build/
+
+# Data
+data/*.csv

@@ -2,6 +2,7 @@ import pymysql
 import pandas as pd
 from typing import List, Optional, Dict
 from sqlalchemy import create_engine
+from urllib.parse import urlparse
 import os
 from dotenv import load_dotenv
 
@@ -9,18 +10,20 @@ load_dotenv()
 
 class DatabaseService:
     def __init__(self):
+        # DATABASE_URL 파싱
+        db_url = os.getenv('DATABASE_URL')
+        parsed = urlparse(db_url)
+        
         # pymysql 연결 (EXPLAIN 등 raw query용)
         self.connection = pymysql.connect(
-            host=os.getenv('DB_HOST'),
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME'),
+            host=parsed.hostname,
+            port=parsed.port or 3306,
+            user=parsed.username,
+            password=parsed.password,
+            database=parsed.path[1:],  # 앞의 '/' 제거
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
-        
-        # SQLAlchemy 엔진 (to_sql용)
-        db_url = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
         self.engine = create_engine(db_url)
     
     def get_csv_columns(self, csv_path: str):
@@ -32,16 +35,16 @@ class DatabaseService:
         """CSV 전체 컬럼으로 테이블 생성 (to_sql 사용)"""
         # CSV 전체 읽기
         df = pd.read_csv(csv_path)
-        df = df.sample(frac=0.1)
+        df = df.sample(frac=0.01)  # 1% 샘플링
         
         # 기존 테이블이 있으면 삭제하고 새로 생성
         df.to_sql(
             name=table_name,
             con=self.engine,
-            if_exists='replace',  # 기존 테이블 삭제 후 재생성
-            index=False,          # 인덱스 컬럼 제외
-            method='multi',       # 빠른 삽입
-            chunksize=1000        # 1000개씩 나눠서 삽입
+            if_exists='replace',
+            index=False,
+            method='multi',
+            chunksize=1000
         )
         
         return {
@@ -67,7 +70,7 @@ class DatabaseService:
                 cursor.execute(sql)
             
             return cursor.fetchall()
-        
+    
     def explain_data(self, table_name: str, conditions: Optional[Dict] = None, limit: int = 100):
         """EXPLAIN과 EXPLAIN ANALYZE 모두 실행"""
         with self.connection.cursor() as cursor:
@@ -103,4 +106,54 @@ class DatabaseService:
                 'Extra': explain_info.get('Extra', ''),
                 'analyze_text': analyze_text,
                 'full_explain': explain_info
+            }
+    
+    def create_index(self, table_name: str, column_name: str, index_name: str):
+        """단일 인덱스 생성"""
+        with self.connection.cursor() as cursor:
+            sql = f"CREATE INDEX {index_name} ON {table_name}(`{column_name}`(50))"
+            cursor.execute(sql)
+        self.connection.commit()
+        return {"index_created": index_name, "column": column_name}
+    
+    def create_composite_index(self, table_name: str, columns: List[str], index_name: str):
+        """복합 인덱스 생성"""
+        with self.connection.cursor() as cursor:
+            # 여러 컬럼을 순서대로 결합
+            columns_str = ', '.join([f"`{col}`" for col in columns])
+            sql = f"CREATE INDEX {index_name} ON {table_name}({columns_str}(50))"
+            cursor.execute(sql)
+        self.connection.commit()
+        return {"index_created": index_name, "columns": columns}
+    
+    def drop_index(self, table_name: str, index_name: str):
+        """인덱스 삭제"""
+        with self.connection.cursor() as cursor:
+            sql = f"DROP INDEX {index_name} ON {table_name}"
+            cursor.execute(sql)
+        self.connection.commit()
+        return {"index_dropped": index_name}
+    
+    def execute_raw_query(self, query: str):
+        """직접 작성한 쿼리 실행"""
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return cursor.fetchall()
+
+    def execute_explain_raw(self, query: str):
+        """직접 작성한 쿼리의 EXPLAIN 실행"""
+        with self.connection.cursor() as cursor:
+            # EXPLAIN 실행
+            explain_query = f"EXPLAIN {query}"
+            cursor.execute(explain_query)
+            explain_result = cursor.fetchall()
+            
+            explain_info = explain_result[0] if explain_result else {}
+            
+            return {
+                'type': explain_info.get('type', 'N/A'),
+                'rows': explain_info.get('rows', 0),
+                'key': explain_info.get('key', None),
+                'key_len': explain_info.get('key_len', None),
+                'Extra': explain_info.get('Extra', '')
             }
