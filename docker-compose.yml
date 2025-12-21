@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build: ./back
     container_name: fastapi-app
     restart: always
     environment:
@@ -13,7 +13,7 @@ services:
       - app-network
 
   frontend:
-    build: ./frontend
+    build: ./front
     container_name: vue-app
     restart: always
     ports:
