@@ -431,8 +431,15 @@ export default {
         this.tableColumns = response.data.details.columns
         this.tableRowCount = response.data.details.rows_inserted
         this.selectedColumns = [...this.availableColumns]
-        this.indexList = []
-        alert(`테이블 생성 완료!\n행 개수: ${this.tableRowCount}개`)
+
+        // 이미 존재했던 테이블인지 확인
+        if (response.data.details.existed) {
+          this.indexList = []  // 인덱스 목록 초기화하지 않음
+          alert(`기존 테이블을 사용합니다.\n행 개수: ${this.tableRowCount}개`)
+        } else {
+          this.indexList = []  // 새 테이블이므로 초기화
+          alert(`테이블 생성 완료!\n행 개수: ${this.tableRowCount}개`)
+        }
       } catch (error) {
         alert('테이블 생성 실패: ' + error.message)
       } finally {

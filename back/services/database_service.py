@@ -60,17 +60,30 @@ class DatabaseService:
         df = pd.read_csv(csv_path, nrows=0)  # 헤더만 읽기
         return df.columns.tolist()
     
-    def create_full_table(self, csv_path: str, table_name: str):
-        """CSV 전체 컬럼으로 테이블 생성 (to_sql 사용)"""
-        # CSV 전체 읽기
-        df = pd.read_csv(csv_path)
-        df = df.sample(frac=0.01)  # 1% 샘플링
+    def create_full_table(self, csv_path: str, table_name: str = 'full_table'):
+        """테이블이 이미 있으면 재사용, 없으면 생성"""
         
-        # 기존 테이블이 있으면 삭제하고 새로 생성
+        # 1. 테이블 존재 확인
+        if self._table_exists(table_name):
+            # 이미 있으면 정보만 반환
+            columns = self._get_table_columns(table_name)
+            row_count = self._get_row_count(table_name)
+            
+            return {
+                "table_name": table_name,
+                "rows_inserted": row_count,
+                "columns": columns,
+                "existed": True  # 이미 존재했음을 표시
+            }
+        
+        # 2. 없으면 새로 생성
+        df = pd.read_csv(csv_path)
+        df = df.sample(frac=0.01)
+        
         df.to_sql(
             name=table_name,
             con=self.engine,
-            if_exists='replace',
+            if_exists='fail',  # 동시 생성 방지
             index=False,
             method='multi',
             chunksize=1000
@@ -79,8 +92,35 @@ class DatabaseService:
         return {
             "table_name": table_name,
             "rows_inserted": len(df),
-            "columns": df.columns.tolist()
+            "columns": df.columns.tolist(),
+            "existed": False  # 새로 생성됨
         }
+
+    def _table_exists(self, table_name: str) -> bool:
+        """테이블 존재 여부 확인"""
+        with self.connection.cursor() as cursor:
+            cursor.execute(f"""
+                SELECT COUNT(*)
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE()
+                AND table_name = '{table_name}'
+            """)
+            result = cursor.fetchone()
+            return result['COUNT(*)'] > 0
+
+    def _get_table_columns(self, table_name: str) -> list:
+        """테이블 컬럼 목록 조회"""
+        with self.connection.cursor() as cursor:
+            cursor.execute(f"SHOW COLUMNS FROM {table_name}")
+            columns = cursor.fetchall()
+            return [col['Field'] for col in columns]
+
+    def _get_row_count(self, table_name: str) -> int:
+        """테이블 행 개수 조회"""
+        with self.connection.cursor() as cursor:
+            cursor.execute(f"SELECT COUNT(*) as cnt FROM {table_name}")
+            result = cursor.fetchone()
+            return result['cnt']
     
     def select_data(self, table_name: str, conditions: Optional[Dict] = None, limit: int = 100):
         """데이터 조회"""
@@ -191,3 +231,5 @@ class DatabaseService:
                 'key_len': explain_info.get('key_len', None),
                 'Extra': explain_info.get('Extra', '')
             }
+        
+    
