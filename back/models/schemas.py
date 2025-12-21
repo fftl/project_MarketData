@@ -22,3 +22,8 @@ class QueryRequest(BaseModel):
 
 class CustomQueryRequest(BaseModel):
     query: str
+
+class TableCreateRequest(BaseModel):
+    columns: List[str]
+    csv_path: Optional[str] = "data/소상공인시장진흥공단_상가(상권)정보_서울_202510.csv"
+    table_name: Optional[str] = "test_table"

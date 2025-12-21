@@ -447,23 +447,6 @@ export default {
       }
     },
 
-    async createTableWithSelectedColumns() {
-      this.isLoading = true
-      this.loadingMessage = '선택한 컬럼으로 테이블 생성 중...'
-      try {
-        const response = await api.createTable(this.selectedColumns)
-        this.currentTable = 'test_table'
-        this.tableColumns = this.selectedColumns
-        this.tableRowCount = response.data.details?.rows_inserted || 0
-        this.indexList = []
-        alert('테이블 생성 완료!')
-      } catch (error) {
-        alert('테이블 생성 실패: ' + error.message)
-      } finally {
-        this.isLoading = false
-      }
-    },
-
     // 복합 인덱스 컬럼 관리
     addToComposite(column) {
       this.compositeColumns.push(column)
@@ -629,12 +612,20 @@ export default {
       this.loadingMessage = '선택한 컬럼으로 테이블 생성 중...'
       try {
         const response = await api.createTable(this.selectedColumns)
-        this.currentTable = 'test_table'
+
+        // 서버에서 자동 생성된 테이블명 사용
+        this.currentTable = response.data.details.table_name
         this.tableColumns = this.selectedColumns
-        this.displayColumns = this.selectedColumns  // 초기에는 선택된 컬럼
-        this.tableRowCount = response.data.details?.rows_inserted || 0
-        this.indexList = []
-        alert('테이블 생성 완료!')
+        this.displayColumns = this.selectedColumns
+        this.tableRowCount = response.data.details.rows_inserted
+
+        // 재사용한 테이블인지 확인
+        if (response.data.details.existed) {
+          alert(`기존 테이블을 재사용합니다.\n테이블명: ${this.currentTable}\n행 개수: ${this.tableRowCount}개`)
+        } else {
+          this.indexList = []
+          alert(`테이블 생성 완료!\n테이블명: ${this.currentTable}\n행 개수: ${this.tableRowCount}개`)
+        }
       } catch (error) {
         alert('테이블 생성 실패: ' + error.message)
       } finally {

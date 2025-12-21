@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Optional, Dict
 from sqlalchemy import create_engine
 from urllib.parse import urlparse
+import hashlib  
 import os
 import re
 from dotenv import load_dotenv
@@ -78,7 +79,7 @@ class DatabaseService:
         
         # 2. 없으면 새로 생성
         df = pd.read_csv(csv_path)
-        df = df.sample(frac=0.01)
+        df = df.sample(frac=0.5)
         
         df.to_sql(
             name=table_name,
@@ -95,6 +96,71 @@ class DatabaseService:
             "columns": df.columns.tolist(),
             "existed": False  # 새로 생성됨
         }
+    
+    def _generate_table_name(self, columns: List[str], prefix: str = "custom") -> str:
+        """컬럼 개수와 해시로 테이블명 생성"""
+        
+        # 컬럼을 정렬하여 순서 무관하게
+        sorted_columns = sorted(columns)
+        columns_str = ",".join(sorted_columns)
+        
+        # 해시 생성
+        hash_obj = hashlib.md5(columns_str.encode())
+        hash_str = hash_obj.hexdigest()[:8]
+        
+        # 컬럼 개수 + 해시
+        return f"{prefix}_{len(columns)}cols_{hash_str}"
+
+    def create_table_with_columns(self, csv_path: str, columns: List[str], table_name: str = None):
+        """선택한 컬럼으로 테이블 생성 (자동 테이블명 생성 및 재사용)"""
+        
+        # 1. 테이블명이 없으면 자동 생성
+        if not table_name:
+            table_name = self._generate_table_name(columns, prefix="custom")
+        
+        # 2. 테이블 존재 확인
+        if self._table_exists(table_name):
+            existing_columns = self._get_table_columns(table_name)
+            
+            # 컬럼이 동일하면 재사용
+            if set(existing_columns) == set(columns):
+                row_count = self._get_row_count(table_name)
+                return {
+                    "table_name": table_name,
+                    "rows_inserted": row_count,
+                    "columns": columns,
+                    "existed": True
+                }
+        
+        # 3. 새로 생성
+        df = pd.read_csv(csv_path)
+        df = df.sample(frac=0.01)
+        
+        # 컬럼 유효성 검증
+        available_columns = df.columns.tolist()
+        invalid_columns = [col for col in columns if col not in available_columns]
+        
+        if invalid_columns:
+            raise ValueError(f"존재하지 않는 컬럼: {', '.join(invalid_columns)}")
+        
+        df_selected = df[columns]
+        
+        df_selected.to_sql(
+            name=table_name,
+            con=self.engine,
+            if_exists='replace',
+            index=False,
+            method='multi',
+            chunksize=1000
+        )
+        
+        return {
+            "table_name": table_name,
+            "rows_inserted": len(df_selected),
+            "columns": columns,
+            "existed": False
+        }
+
 
     def _table_exists(self, table_name: str) -> bool:
         """테이블 존재 여부 확인"""

@@ -6,7 +6,8 @@ from models.schemas import (
     IndexRequest, 
     QueryRequest,
     CompositeIndexRequest,
-    CustomQueryRequest
+    CustomQueryRequest,
+    TableCreateRequest,  # 추가
 )
 from services.database_service import DatabaseService
 
@@ -40,7 +41,27 @@ async def create_full_table(request: FullTableCreateRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+    
+# 선택한 컬럼으로 테이블 생성
+# 선택한 컬럼으로 테이블 생성
+@router.post("/table/create")
+async def create_table_with_columns(request: TableCreateRequest):
+    try:
+        result = db_service.create_table_with_columns(
+            csv_path=request.csv_path or "data/소상공인시장진흥공단_상가(상권)정보_서울_202510.csv",
+            columns=request.columns,
+            table_name=request.table_name  # None이면 자동 생성
+        )
+        return {
+            "success": True,
+            "message": "Table created with selected columns",
+            "details": result
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+    
 # 일반 쿼리 실행
 @router.post("/query/execute")
 async def execute_query(request: QueryRequest):
