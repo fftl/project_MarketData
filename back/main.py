@@ -7,7 +7,7 @@ app = FastAPI()  # ← FastAPI 앱 생성 (식당 오픈)
 # CORS 설정 (Vue와 통신 가능하게)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://3.39.42.231:8080/"],  # Vue 허용
+    allow_origins=["http://3.39.42.231:8080"],  # Vue 허용
     allow_methods=["*"],
 )
 
