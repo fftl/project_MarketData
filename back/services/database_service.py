@@ -4,6 +4,7 @@ from typing import List, Optional, Dict
 from sqlalchemy import create_engine
 from urllib.parse import urlparse
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,6 +14,8 @@ class DatabaseService:
         # DATABASE_URL 파싱
         db_url = os.getenv('DATABASE_URL')
         parsed = urlparse(db_url)
+        read_db_url = os.getenv('READ_DATABASE_URL')
+        read_parsed = urlparse(read_db_url)
         
         # pymysql 연결 (EXPLAIN 등 raw query용)
         self.connection = pymysql.connect(
@@ -24,7 +27,33 @@ class DatabaseService:
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
+
+        self.readonly_connection = pymysql.connect(
+            host=read_parsed.hostname,
+            port=read_parsed.port or 3306,
+            user=read_parsed.username,
+            password=read_parsed.password,
+            database=read_parsed.path[1:],  # 앞의 '/' 제거
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+
         self.engine = create_engine(db_url)
+
+    def _clean_query(self, query: str) -> str:
+        """쿼리 정리 (주석 제거, 공백 정리)"""
+        # SQL 주석 제거
+        query = re.sub(r'--.*$', '', query, flags=re.MULTILINE)  # -- 주석
+        query = re.sub(r'/\*.*?\*/', '', query, flags=re.DOTALL)  # /* */ 주석
+        # 공백 정리
+        query = ' '.join(query.split())
+        return query.strip()
+
+    def _is_safe_select(self, query: str) -> bool:
+        """SELECT 문인지 확인"""
+        query_upper = query.upper().strip()
+        # WITH 절을 사용한 CTE도 허용
+        return query_upper.startswith('SELECT') or query_upper.startswith('WITH')
     
     def get_csv_columns(self, csv_path: str):
         """CSV 파일의 전체 컬럼 목록 반환"""
@@ -135,14 +164,26 @@ class DatabaseService:
         return {"index_dropped": index_name}
     
     def execute_raw_query(self, query: str):
+        """직접 작성한 쿼리 실행 (읽기 전용 연결 사용)"""
+        # 검증은 여전히 수행
+        cleaned_query = self._clean_query(query)
+        if not self._is_safe_select(cleaned_query):
+            raise ValueError("SELECT 쿼리만 실행 가능합니다.")
+        
         """직접 작성한 쿼리 실행"""
-        with self.connection.cursor() as cursor:
+        with self.readonly_connection.cursor() as cursor:
             cursor.execute(query)
             return cursor.fetchall()
 
     def execute_explain_raw(self, query: str):
+        """직접 작성한 쿼리 실행 (읽기 전용 연결 사용)"""
+        # 검증은 여전히 수행
+        cleaned_query = self._clean_query(query)
+        if not self._is_safe_select(cleaned_query):
+            raise ValueError("SELECT 쿼리만 실행 가능합니다.")
+        
         """직접 작성한 쿼리의 EXPLAIN 실행"""
-        with self.connection.cursor() as cursor:
+        with self.readonly_connection.cursor() as cursor:
             # EXPLAIN 실행
             explain_query = f"EXPLAIN {query}"
             cursor.execute(explain_query)
