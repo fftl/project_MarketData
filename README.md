@@ -25,8 +25,12 @@
 | **DevOps** | AWS Lightsail, Docker, Nginx, Github Actions |
 | **Data** | Pandas, 공공데이터 API |
 
+## 시스템 아키텍처
+![alt text](assets/architecture.png)
+
 ## 서비스 화면
 ![alt text](assets/image.png)
 ![alt text](assets/image3.png)
 ![alt text](assets/image2.png)
 ![alt text](assets/image4.png)
+
